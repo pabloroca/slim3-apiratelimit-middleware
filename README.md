@@ -47,6 +47,14 @@ $app->add(function ($request, $response, $next) {
     return $responsen;
 });
 ```
+**3 Define database connection**
+
+Change values accordingly
+
+```php
+    	$this->pdo = new PDO('mysql:host=localhost;dbname=MYDBNAME;charset=utf8', 'MYUSER', 'MYPASSWORD');
+```
+
 
 **Notes**: beware that you need to have an event who deletes periodically the xrequests table. You can use the MySQL Event Scheduler https://dev.mysql.com/doc/refman/5.7/en/event-scheduler.html or a cron job.
 
