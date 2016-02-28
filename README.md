@@ -6,7 +6,7 @@ It works with a MySQL / MariaDB database
 
 ## Install
 
-** 1 Create table xrequests where all incoming requests are registered **
+**1 Create table xrequests where all incoming requests are registered**
 
 ```sql
 CREATE TABLE IF NOT EXISTS `xrequests` (
@@ -22,7 +22,7 @@ ALTER TABLE `xrequests`
 MODIFY `id` int(11) NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;
 ```
 
-** 2 Add Application Middleware **
+**2 Add Application Middleware**
 
 ```php
 $app->add(function ($request, $response, $next) {
@@ -44,4 +44,4 @@ $app->add(function ($request, $response, $next) {
 });
 ```
 
-** Notes **: beware that you need to have a task who deletes periodically the xrequests table. You can use the Event Scheduler https://dev.mysql.com/doc/refman/5.7/en/event-scheduler.html or a cron job.
+**Notes**: beware that you need to have a task who deletes periodically the xrequests table. You can use the Event Scheduler https://dev.mysql.com/doc/refman/5.7/en/event-scheduler.html or a cron job.
