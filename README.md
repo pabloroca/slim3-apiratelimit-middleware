@@ -44,4 +44,4 @@ $app->add(function ($request, $response, $next) {
 });
 ```
 
-**Notes**: beware that you need to have a task who deletes periodically the xrequests table. You can use the Event Scheduler https://dev.mysql.com/doc/refman/5.7/en/event-scheduler.html or a cron job.
+**Notes**: beware that you need to have an event who deletes periodically the xrequests table. You can use the MySQL Event Scheduler https://dev.mysql.com/doc/refman/5.7/en/event-scheduler.html or a cron job.
