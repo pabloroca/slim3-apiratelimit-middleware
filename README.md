@@ -4,6 +4,10 @@ Middleware for API Rate limit. When limit exceeded it returns HTTP Status code 4
 
 It works with a MySQL / MariaDB database
 
+## Main specs
+
+- If you have CloudFare, it checks that the origin ip belongs to them
+
 ## Install
 
 **1 Create table xrequests where all incoming requests are registered**
@@ -27,8 +31,8 @@ MODIFY `id` int(11) NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;
 ```php
 $app->add(function ($request, $response, $next) {
 
-	$requests = 100;
-	$inmins = 60;
+	$requests = 100; // maximum number of requests
+	$inmins = 60;    // in how many time (minutes)
 	
 	$APIRateLimit = new App\Utils\APIRateLimit($requests, $inmins);
 	$mustbethrottled = $APIRateLimit();
