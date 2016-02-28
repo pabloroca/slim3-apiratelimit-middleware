@@ -1,12 +1,12 @@
 # API Rate Limit for Slim3
 
-Middleware for API Rate limit. When limit exceeded it returns HTTP Status code 429 and does not process further requests.
+Middleware for API Rate limiter. When request limit exceeds a predefined value it returns HTTP Status code 429 and does not process further requests.
 
-It works with a MySQL / MariaDB database
+It works with a MySQL & MariaDB database
 
 ## Main specs
 
-- If you have CloudFare, it checks that the origin ip belongs to them
+- If you have CloudFare, it checks that the origin ip belongs to them, also sets the proper remote IP
 
 ## Install
 
