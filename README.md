@@ -1,4 +1,4 @@
-# API Rate Limit for Slim3
+# API Rate Limiter for Slim3
 
 Middleware for API Rate limiter. When request limit exceeds a predefined value it returns HTTP Status code 429 and does not process further requests.
 
