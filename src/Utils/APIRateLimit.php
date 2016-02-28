@@ -28,12 +28,11 @@ class APIRateLimit
     	
     	$this->requests = $requests;
     	$this->inmins = $inmins;
-
-    	$this->originip = $this->info_about_ip()['REMOTE_ADDR'];
     }
 
     public function __invoke()
     {
+    	$this->originip = $this->info_about_ip()['REMOTE_ADDR'];
     	return $this->mustbethrottled();
     }
 
