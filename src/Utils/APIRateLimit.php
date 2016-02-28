@@ -22,9 +22,10 @@ class APIRateLimit
 
 	private $table = "xrequests";
 	
-    public function __construct($theapp, $requests, $inmins)
+    public function __construct($requests, $inmins)
     {
-    	$this->pdo = $theapp->get('pdo');
+    	$this->pdo = new PDO('mysql:host=localhost;dbname=MYDBNAME;charset=utf8', 'MYUSER', 'MYPASSWORD');
+    	
     	$this->requests = $requests;
     	$this->inmins = $inmins;
 
