@@ -41,7 +41,7 @@ $app->add(function ($request, $response, $next) {
         $responsen = $next($request, $responsen);
 	} else {
         $responsen = $responsen ->withStatus(429)
-                                ->withHeader('RateLimit-Limit', $this->settings['apithrottle']['requests']);
+                                ->withHeader('RateLimit-Limit', $requests);
 	}
 
     return $responsen;
