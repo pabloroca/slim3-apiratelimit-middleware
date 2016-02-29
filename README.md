@@ -38,10 +38,10 @@ $app->add(function ($request, $response, $next) {
 	$mustbethrottled = $APIRateLimit();
 	
 	if ($mustbethrottled == false) {
-        $responsen = $next($request, $responsen);
+        $responsen = $next($request, $response);
 	} else {
-        $responsen = $responsen ->withStatus(429)
-                                ->withHeader('RateLimit-Limit', $requests);
+        $responsen = $response ->withStatus(429)
+                               ->withHeader('RateLimit-Limit', $requests);
 	}
 
     return $responsen;
