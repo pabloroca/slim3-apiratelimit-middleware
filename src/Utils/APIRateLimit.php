@@ -52,7 +52,7 @@ class APIRateLimit
         	$result = null;
         }
 		
-		if ($result['requests'] > $this->requests) {
+		if ($result['requests'] >= $this->requests) {
 			return TRUE;
 		}
 		
