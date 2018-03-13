@@ -1,13 +1,20 @@
 <?php
 
+
 namespace App\Utils;
 
+use Slim\Middleware;
+use \Psr\Http\Message\ServerRequestInterface as Request;
+use \Psr\Http\Message\ResponseInterface as Response;
+
+
+// Jose Álvaro Domínguez @ 2018
 // Pablo Roca @ 2016
 
 /**
  * Class APIRateLimit
  */
- 
+
 class APIRateLimit
 {
     /**
@@ -16,63 +23,177 @@ class APIRateLimit
     private $pdo;
 
     private $requests;
-    private $inmins;
-	
-    private $originip;
+	private $inmins;
+	private $settings;
 
-	private $table = "xrequests";
-	
-    public function __construct($requests, $inmins)
+	/**
+	 * Constructor.
+	 * @param ContainerInterface $container Slim container object for DI.
+	 */
+    public function __construct($container)
     {
-    	$this->pdo = new PDO('mysql:host=localhost;dbname=MYDBNAME;charset=utf8', 'MYUSER', 'MYPASSWORD');
-    	
-    	$this->requests = $requests;
-    	$this->inmins = $inmins;
+		$this->settings = $container->get('settings')['apirate'];
+		$this->pdo = $container->get('apidb');
+
+		$this->inmins = $this->settings['inmins'];
+		$this->requests = $this->settings['requests'];
     }
 
-    public function __invoke()
+	/**
+	 * Callable used by entrypoint for Middlewares.
+	 * @param ServerRequestInterface $request Slim request object
+	 * @param ResponseInterface $response Slim response object
+	 * @param callable $next Callable that link the next middleware.
+	 */
+    public function __invoke(Request $request, Response $response, $next)
     {
-    	$this->originip = $this->info_about_ip()['REMOTE_ADDR'];
-    	return $this->mustbethrottled();
+		// Check if we have an Authorization header. Only supporting Basic Auth at the moment.
+		$header = $this->getAuthorizationHeader($request);
+
+		if($header){
+			// Get Api User information from [apiusers] table. Getting user_id, user name and throttle limit from database.
+			$user = $this->getUser($header);
+			if($user){
+				// If we have a valid user, then try to throttle.
+				return $this->throttleUser($user);
+			}
+		}
+		// If Not API user detected, try to Throttle by IP.
+		$ip = $this->info_about_ip()['REMOTE_ADDR'];
+		return $this->throttleIp($ip);
     }
 
-	protected function mustbethrottled () {
+	/**
+	 * Getting and decoding Authorization Header for Basic auth.
+	 * @param ServerRequestInterface $request Request object from Slim.
+	 * @return string|NULL Return an string with user:password decoded or Null if it does not exit.
+	 */
+	protected function getAuthorizationHeader(Request $request)
+	{
+		// HTTP Authorization Header format:
+		// 		Authorization: Basic base64(user:password)
+
+		$headers = $request->getHeaders();
+		if(array_key_exists('Authorization', $headers)){
+			$header = $headers['Authoriation'];
+
+			$parts = explode(' ', $header);
+			$hash = array_pop($parts);
+			$plain = base64_decode($hash);
+
+			return $plain;
+		}
+		return NULL;
+	}
+
+	/**
+	 * Getting User from database extracting the username and sha1 hash from Authozation header
+	 * @param string $header Plain string with [user:pasword] decoded from Authorization header
+	 * @return mixed|NULL Return an Array with the user information or null if the user is not found.
+	 */
+	protected function getUser($header)
+	{
+		if(preg_match("#([\w]+)[:]([\w]+)#", $header, $matches)){
+			$user = $matches[1];
+			$pass = $matches[2];
+
+			// Looking for the user in [apiusers] table.
+			$sql = "SELECT user_id, user, throttle FROM %s WHERE user = %s AND password = %s";
+			$sql = sprintf($sql, 'apiusers', $user, sha1($pass));
+
+			$stmt = $this->pdo->prepare($sql);
+			$stmt->execute();
+
+			if ($stmt) {
+				$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+				// Return the user_id, the user name and the throttle limit for processing.
+				return [
+					'id' 		=> $result['user_id'],
+					'user' 		=> $result['user'],
+					'limit'		=> $result['limit'],
+				];
+			}
+		}
+		return NULL;
+	}
+
+	/**
+	 * Try to throttle a existing API User.
+	 * @param mixed $user Array with user information for processing.
+	 * @return bool Return TRUE or FALSE depending if the user has exceed the limits configured for him in the database.
+	 */
+	protected function throttleUser($user)
+	{
+
+		// Get all the activity from the [apiuseractivity] table in the proper time window.
+		$sql = "SELECT count(*) as requests FROM ( select 1 FROM %s WHERE user_id = %s AND ts >= date_sub(NOW(), interval %s MINUTE)  LIMIT %s ) AS result";
+		$sql = sprintf($sql, 'apiuseractivity', $user['id'], $this->inmins, $user['limit']);
+
+		$stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
+
+        if ($stmt) {
+			$result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+			// If it exceed the setted parameter, then throttle it.
+			if ($result['requests'] > $user['limit']) {
+				return TRUE;
+			}
+		}
+
+		// Incrementing requests by the user.
+		$sql = sprintf('INSERT INTO %s (user_id) VALUES (:user_id)', 'apiuseractivity');
+        $stmt = $this->pdo->prepare($sql);
+        // bind the key
+        $stmt->bindValue(':user_id', $user['id']);
+		$stmt->execute();
+
+		return FALSE;
+	}
+
+	/**
+	 * Try to Throttle by IP. This is the original Behavour of the middleware.
+	 * @param string $ip IP from the origin of the request.
+	 * @return bool Return TRUE or FALSE depending if the IP has exceed the limits configured for him in the database.
+	 */
+	protected function throttleIp ($ip)
+	{
 
         // fast count by http://stackoverflow.com/questions/4871747/mysql-count-performance
         //
-        
-        $sql = "SELECT count(*) as requests FROM ( select 1 FROM ".$this->table." WHERE originip = '".$this->originip."' AND ts >= date_sub(NOW(), interval ".$this->inmins." MINUTE)  LIMIT ".$this->requests." ) AS result";
-        
+
+        $sql = "SELECT count(*) as requests FROM ( select 1 FROM xrequest WHERE originip = '".$ip."' AND ts >= date_sub(NOW(), interval ".$this->inmins." MINUTE)  LIMIT ".$this->requests." ) AS result";
+
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute();
-        
+
         if ($stmt) {
             $result = $stmt->fetch(\PDO::FETCH_ASSOC);
         } else {
         	$result = null;
         }
-		
+
 		if ($result['requests'] > $this->requests) {
 			return TRUE;
 		}
-		
-        $sql = sprintf('INSERT INTO %s (originip) VALUES (:originip)', $this->table);
+
+        $sql = sprintf('INSERT INTO %s (originip) VALUES (:originip)', $ip);
         $stmt = $this->pdo->prepare($sql);
         // bind the key
-        $stmt->bindValue(':originip', $this->originip);
+        $stmt->bindValue(':originip', $ip);
         $stmt->execute();
 
         return FALSE;
 
 	}
-	
+
 	protected function info_about_ip () {
         //
-        // cloudfare ip ranges 
+        // cloudfare ip ranges
         //
         // https://www.cloudflare.com/ips-v4 28/2/2016
         // https://www.cloudflare.com/ips-v6 28/2/2016
-        //    	
+        //
         if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
       		$cf_ip_ranges = array(
       		'103.21.244.0/22',
@@ -109,15 +230,15 @@ class APIRateLimit
       				}
       			}
       		}
-        }   	
+        }
 
         $array = array(
             "REMOTE_ADDR" => $_SERVER['REMOTE_ADDR']
-        );    	
-    	
+        );
+
     	return $array;
 	}
-	
+
 	protected function ipVersion($txt) {
         return strpos($txt, ":") === false ? 4 : 6;
     }
@@ -229,6 +350,6 @@ class APIRateLimit
 	    }
 	    return $result;
 	} // end of the "PMA_ipv6MaskTest()" function
- 	
+
 }
 
