@@ -108,6 +108,6 @@ middleware only support HTTP Auth Basic. So you user:pass is going to be sent as
 **Note 3**: It is possible to use other database vendors if the sql schema if adapted and the PDO connection string is properly configured in the
 settings.
 
-**Note 4**: The target of making all these changes is give a basic support or small inspiration for resolving
+**Note 4**: The target of making all these changes is give a basic support or small inspiration for resolving pabloroca/slim3-apiratelimit-middleware/issues/3
 
 It will be better integrated in my **Slim 3 Very simple REST Skeleton**  https://github.com/pabloroca/slim3-simple-rest-skeleton
