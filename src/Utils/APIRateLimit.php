@@ -75,7 +75,7 @@ class APIRateLimit
 
         $headers = $request->getHeaders();
         if(array_key_exists('Authorization', $headers)){
-            $header = $headers['Authoriation'];
+            $header = $headers['Authorization'];
 
             $parts = explode(' ', $header);
             $hash = array_pop($parts);
